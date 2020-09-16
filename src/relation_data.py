@@ -192,6 +192,36 @@ class RelationDatum:
 
         return dic
 
+    def export_ann(self, ofile=None):
+        text = self.data["text"]
+        ofile = Path(ofile)
+        lines = []
+        for tag, val in data["entity"].items():
+            start = val["start"]
+            end = val["end"]
+            entity = val["entity"]
+            label = val["label"]
+            line = "{}\t{} {} {}\t{}".format(tag, label, start, end, entity)
+            lines.append(line)
+        for tag, val in dat["relation"].items():
+            label = val["label"]
+            arg1 = val["arg1"]
+            arg2 = val["arg2"]
+            line = "{}\t{} Arg1:{} Arg2:{}"
+            lines.append(line)
+        ann_txt = "\n".join(lines)
+
+        if ofile:
+            ann_path = ofile.parent / (ofile.stem + ".ann")
+            txt_path = ofile.parent / (ofile.stem + ".txt")
+            ann_path.write_text(ann_txt)
+            txt_path.write_text(text)
+        else:
+            print("txt:", text, sep="\n")
+            print("ann:", ann_txt, sep="\n")
+
+        return ann_txt, text
+
 
 class RelationData:
     def __init__(
@@ -246,6 +276,15 @@ class RelationData:
             ofile = Path(ofile)
             ofile.write_text(otxt)
         return otxt
+
+    def export_ann(self, ofile=None):
+        ann_txts = []
+        txt = []
+        for k, v in self.data.items():
+            a, t = v.export_ann(ofile / k)
+            ann_txts.append(a)
+            txt.append(t)
+        return ann_txts, txt
 
 
 # ann data loader
