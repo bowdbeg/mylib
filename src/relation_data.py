@@ -236,7 +236,7 @@ class RelationData:
             )
 
     def load(
-        dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
+        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
     ):
         self.dir_path = Path(dir_path)
         self.pattern = pattern
