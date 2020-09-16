@@ -6,7 +6,11 @@ from tqdm import tqdm
 
 
 class RelationDatum:
-    def __init__(self, path, data_type="auto"):
+    def __init__(self, path=None, data_type="auto"):
+        if path:
+            self.load(path, data_type)
+
+    def load(self, path, data_type="auto"):
         self.data_path = Path(path)
 
         if data_type == "auto":
@@ -16,6 +20,8 @@ class RelationDatum:
 
         self.data = self.parse(self.data_path, data_type=self.data_type)
 
+    def from_dict(self, dic):
+        self.data = dic
 
     def __getitem__(self, key):
         return self.data[key]
@@ -31,7 +37,6 @@ class RelationDatum:
 
     def values(self):
         return self.data.values()
-
 
     def parse(self, data_path, data_type="auto"):
         data_path = Path(data_path)
@@ -190,7 +195,18 @@ class RelationDatum:
 
 class RelationData:
     def __init__(
-        self, dir_path, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
+        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
+    ):
+        if dir_path:
+            self.load(
+                dir_path=dir_path,
+                pattern=pattern,
+                data_type=data_type,
+                spacy_model=spacy_model,
+            )
+
+    def load(
+        dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
     ):
         self.dir_path = Path(dir_path)
         self.pattern = pattern
@@ -201,6 +217,8 @@ class RelationData:
         for f in files:
             self.data[f] = RelationDatum(f)
 
+    def from_dict(dic):
+        self.data = dic
 
     def __getitem__(self, key):
         return self.data[key]
