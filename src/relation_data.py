@@ -16,6 +16,23 @@ class RelationDatum:
 
         self.data = self.parse(self.data_path, data_type=self.data_type)
 
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, val):
+        self.data[key] = val
+
+    def keys(self):
+        return self.data.keys()
+
+    def items(self):
+        return self.data.items()
+
+    def values(self):
+        return self.data.values()
+
+
     def parse(self, data_path, data_type="auto"):
         data_path = Path(data_path)
         if data_type == "auto":
@@ -39,7 +56,7 @@ class RelationDatum:
 
         ann_loader = AnnDataLoader()
 
-        data = {}
+        data = OrderedDict()
 
         text, ents, rels, events = ann_loader.load_ann(ann_path, txt_path)
         data["id"] = ann_path.stem
@@ -64,7 +81,7 @@ class RelationDatum:
         data = self.data
         nlp = spacy.load(spacy_model)
 
-        dic = {}
+        dic = OrderedDict()
         dic["title"] = data["id"]
         dic["vertexSet"] = []
         dic["labels"] = []
@@ -116,25 +133,34 @@ class RelationDatum:
             for sid, sent in enumerate(joined_sents):
                 for wid, token in enumerate(sent):
                     if start < token.idx and wstart is None:
-                        if wid !=0:
+                        if wid != 0:
                             wstart = wid - 1
                             sent_id = sid
                         else:
                             wstart = last_wid
-                            sent_id = sid -1
+                            sent_id = sid - 1
                     if end <= token.idx and wend is None:
                         assert wstart is not None
                         if wid != 0:
                             wend = wid
                         else:
                             wend = last_wid + 1
-                        phrase = list(joined_sents)[sent_id][wstart:wend].text
-                        assert entity in phrase
                         break
                     last_wid = wid
                 if wstart and wend:
                     break
 
+            if wstart is None:
+                wstart = last_wid
+                wend = last_wid + 1
+                sent_id = sid
+            elif wend is None:
+                wend = last_wid + 1
+
+            assert wstart is not None and wend is not None
+
+            phrase = list(joined_sents)[sent_id][wstart:wend].text
+            assert entity in phrase
             dic["vertexSet"].append(
                 [
                     {
@@ -157,7 +183,7 @@ class RelationDatum:
             eid1 = keys.index(arg1)
             eid2 = keys.index(arg2)
 
-            dic["labels"].append({"h": eid1, "t": eid2, "r": rel})
+            dic["labels"].append({"h": eid1, "t": eid2, "r": rel_label, "evidence": []})
 
         return dic
 
@@ -170,10 +196,26 @@ class RelationData:
         self.pattern = pattern
         files = self.dir_path.glob(pattern)
 
-        self.data = {}
+        self.data = OrderedDict()
 
         for f in files:
             self.data[f] = RelationDatum(f)
+
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, val):
+        self.data[key] = val
+
+    def keys(self):
+        return self.data.keys()
+
+    def items(self):
+        return self.data.items()
+
+    def values(self):
+        return self.data.values()
 
     def export_docred(self, ofile=None, spacy_model="en_core_sci_sm"):
         odata = [
