@@ -246,7 +246,7 @@ class RelationData:
         self.data = OrderedDict()
 
         for f in files:
-            self.data[f] = RelationDatum(f)
+            self.data[f] = RelationDatum(path=f, data_type=data_type)
 
     def from_dict(dic):
         self.data = dic
