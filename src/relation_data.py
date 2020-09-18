@@ -285,6 +285,7 @@ class RelationData:
         return otxt
 
     def export_ann(self, ofile=None):
+        ofile = Path(ofile)
         ann_txts = []
         txt = []
         for k, v in self.data.items():
