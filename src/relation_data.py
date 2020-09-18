@@ -3,10 +3,12 @@ import spacy
 import json
 from collections import OrderedDict
 from tqdm import tqdm
+from argparse import ArgumentParser
 
 
 class RelationDatum:
     def __init__(self, path=None, data_type="auto"):
+        self.data = OrderedDict()
         if path:
             self.load(path, data_type)
 
@@ -246,7 +248,7 @@ class RelationData:
         self.data = OrderedDict()
 
         for f in files:
-            self.data[f] = RelationDatum(path=f, data_type=data_type)
+            self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
 
     def from_dict(dic):
         self.data = dic
@@ -324,7 +326,7 @@ class AnnDataLoader:
                     "end": end,
                     "entity": entity,
                 }
-                assert txt_raw[start:end] == entity, "Not matched: span and word"
+                # assert txt_raw[start:end] == entity, "Not matched: span and word"
             elif "R" in tag:
                 # relation
                 sp_s = sp[1].split(" ")
@@ -353,3 +355,61 @@ class AnnDataLoader:
             else:
                 pass
         return ents, rels, events
+
+
+def calc_score(gold, pred, mode="entity", strict=True):
+    and_keys = [g for g in gold.keys() if g in pred.keys()]
+    tp = 0
+    fp = 0
+    fn = 0
+    for key in and_keys:
+        if "entity":
+            gents = [(e["start"], e["end"]) for e in gold[key]["entity"].values()]
+            pents = [(e["start"], e["end"]) for e in pred[key]["entity"].values()]
+            for p in pents:
+                judges = (
+                    [p[0] == g[0] and p[1] == g[1] for g in gents]
+                    if strict
+                    else [g[0] <= p[0] <= g[1] or g[0] <= p[1] <= g[1] for g in gents]
+                )
+                if any(judges):
+                    tp += 1
+                else:
+                    fp += 1
+            for g in gents:
+                judges = (
+                    [p[0] == g[0] and p[1] == g[1] for p in pents]
+                    if strict
+                    else [g[0] <= p[0] <= g[1] or g[0] <= p[1] <= g[1] for p in pents]
+                )
+                if not any(judges):
+                    fn += 1
+        elif "relation":
+            raise NotImplementedError
+    precision = tp / (fp + tp)
+    recall = tp / (fn + tp)
+    f_measure = 2 * precision * recall / (precision + recall)
+    return precision, recall, f_measure
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser(description="calculate score between 2 dir")
+
+    parser.add_argument("gold", type=Path)
+    parser.add_argument("pred", type=Path)
+    parser.add_argument("--strict", action="store_true", default=False)
+    # parser.add_argument('--data_type', type=str,default='auto')
+
+    args = parser.parse_args()
+
+    gold_path = args.gold
+    pred_path = args.pred
+    strict = args.strict
+
+    gold_data = RelationData(gold_path, pattern="*.ann", data_type="ann")
+    pred_data = RelationData(pred_path, pattern="*.ann", data_type="ann")
+
+    p, r, f = calc_score(gold_data, pred_data, strict=strict)
+    print("P: {:.5}".format(p))
+    print("R: {:.5}".format(r))
+    print("F: {:.5}".format(f))
