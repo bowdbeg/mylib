@@ -4,6 +4,7 @@ import json
 from collections import OrderedDict
 from tqdm import tqdm
 from argparse import ArgumentParser
+import re
 
 
 class RelationDatum:
@@ -357,15 +358,23 @@ class AnnDataLoader:
         return ents, rels, events
 
 
-def calc_score(gold, pred, mode="entity", strict=True):
+def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
     and_keys = [g for g in gold.keys() if g in pred.keys()]
     tp = 0
     fp = 0
     fn = 0
     for key in and_keys:
         if "entity":
-            gents = [(e["start"], e["end"]) for e in gold[key]["entity"].values()]
-            pents = [(e["start"], e["end"]) for e in pred[key]["entity"].values()]
+            gents = [
+                (e["start"], e["end"])
+                for e in gold[key]["entity"].values()
+                if re.search(label_pattern, e["label"])
+            ]
+            pents = [
+                (e["start"], e["end"])
+                for e in pred[key]["entity"].values()
+                if re.search(label_pattern, e["label"])
+            ]
             for p in pents:
                 judges = (
                     [p[0] == g[0] and p[1] == g[1] for g in gents]
@@ -398,6 +407,7 @@ if __name__ == "__main__":
     parser.add_argument("gold", type=Path)
     parser.add_argument("pred", type=Path)
     parser.add_argument("--strict", action="store_true", default=False)
+    parser.add_argument("--label", type=str, default=".*")
     # parser.add_argument('--data_type', type=str,default='auto')
 
     args = parser.parse_args()
@@ -405,11 +415,12 @@ if __name__ == "__main__":
     gold_path = args.gold
     pred_path = args.pred
     strict = args.strict
+    label = args.label
 
     gold_data = RelationData(gold_path, pattern="*.ann", data_type="ann")
     pred_data = RelationData(pred_path, pattern="*.ann", data_type="ann")
 
-    p, r, f = calc_score(gold_data, pred_data, strict=strict)
+    p, r, f = calc_score(gold_data, pred_data, strict=strict, label_pattern=label)
     print("P: {:.5}".format(p))
     print("R: {:.5}".format(r))
     print("F: {:.5}".format(f))
