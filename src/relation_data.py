@@ -202,14 +202,14 @@ class RelationDatum:
         text = self.data["text"]
         ofile = Path(ofile)
         lines = []
-        for tag, val in data["entity"].items():
+        for tag, val in self.data["entity"].items():
             start = val["start"]
             end = val["end"]
             entity = val["entity"]
             label = val["label"]
             line = "{}\t{} {} {}\t{}".format(tag, label, start, end, entity)
             lines.append(line)
-        for tag, val in dat["relation"].items():
+        for tag, val in self.data["relation"].items():
             label = val["label"]
             arg1 = val["arg1"]
             arg2 = val["arg2"]
