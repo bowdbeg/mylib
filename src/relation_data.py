@@ -5,6 +5,7 @@ from collections import OrderedDict
 from tqdm import tqdm
 from argparse import ArgumentParser
 import re
+import utils
 
 
 class RelationDatum:
@@ -22,9 +23,11 @@ class RelationDatum:
             self.data_type = data_type
 
         self.data = self.parse(self.data_path, data_type=self.data_type)
+        return self
 
     def from_dict(self, dic):
         self.data = dic
+        return self
 
     def __getitem__(self, key):
         return self.data[key]
@@ -401,6 +404,40 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
     return precision, recall, f_measure
 
 
+def convert_to_target_datum(datum, target):
+    new_data = {}
+    new_data["text"] = target["text"]
+    new_data["relation"] = datum["relation"]
+    new_data["id"] = datum["id"]
+    new_data["entity"] = {}
+    new_data["event"] = datum["event"]
+    new_data["relation"] = datum["relation"]
+
+    diff_indices = utils.diff_string(datum["text"], target["text"])
+    for tag, ent in datum["entity"].items():
+        start = diff_indices[ent["start"]]
+        try:
+            end = diff_indices[ent["end"]]
+        except IndexError:
+            end = start + ent["end"] - ent["start"]
+            assert datum["text"][start:end] == target["text"][ent["start"] : ent["end"]]
+        t = datum["text"][start:end]
+        e = {"start": start, "end": end, "label": ent["label"], "entity": t}
+        new_data["entity"][tag] = e
+    dat = RelationDatum()
+    dat = dat.from_dict(new_data)
+
+    return dat
+
+
+def convert_to_target(data, target):
+    and_keys = [g for g in data.keys() if g in target.keys()]
+    for key in and_keys:
+        if data[key]["text"] != target[key]["text"]:
+            data[key] = convert_to_target_datum(data[key], target[key])
+    return data
+
+
 if __name__ == "__main__":
     parser = ArgumentParser(description="calculate score between 2 dir")
 
@@ -419,6 +456,8 @@ if __name__ == "__main__":
 
     gold_data = RelationData(gold_path, pattern="*.ann", data_type="ann")
     pred_data = RelationData(pred_path, pattern="*.ann", data_type="ann")
+
+    pred_data = convert_to_target(pred_data, gold_data)
 
     p, r, f = calc_score(gold_data, pred_data, strict=strict, label_pattern=label)
     print("P: {:.5}".format(p))
