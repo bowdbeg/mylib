@@ -389,7 +389,7 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
                 judges = (
                     [p[0] == g[0] and p[1] == g[1] for p in pents]
                     if strict
-                    else [g[0] <= p[0] <= g[1] or g[0] <= p[1] <= g[1] for p in pents]
+                    else [p[0] <= g[0] <= p[1] or p[0] <= g[1] <= p[1] for p in pents]
                 )
                 if not any(judges):
                     fn += 1
