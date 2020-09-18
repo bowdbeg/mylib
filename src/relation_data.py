@@ -5,7 +5,7 @@ from collections import OrderedDict
 from tqdm import tqdm
 from argparse import ArgumentParser
 import re
-import utils
+from difflib import Differ
 
 
 class RelationDatum:
@@ -361,6 +361,32 @@ class AnnDataLoader:
         return ents, rels, events
 
 
+def diff_string(s1, s2):
+    # return: index to convert s1 -> s2
+    differ = Differ()
+    diff = list(differ.compare(s1, s2))
+    diff_idx = [0] * len(s1)
+    count = -1
+    add = -1
+    for d in diff:
+        mode = d[0]
+        ch = d[2]
+        if mode == "+":
+            add += 1
+        elif mode == "-":
+            count += 1
+            diff_idx[count] = diff_idx[count - 1]
+            # count+=1
+        else:
+            count += 1
+            diff_idx[count] = diff_idx[count - 1] + add + 1
+            add = 0
+    # assert ''.join([s2[d] for d in diff_idx if d>0]) == s1
+    for i in range(count, len(s1)):
+        diff_idx[i] = diff_idx[i - 1] + 1
+    return diff_idx
+
+
 def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
     and_keys = [g for g in gold.keys() if g in pred.keys()]
     tp = 0
@@ -413,7 +439,7 @@ def convert_to_target_datum(datum, target):
     new_data["event"] = datum["event"]
     new_data["relation"] = datum["relation"]
 
-    diff_indices = utils.diff_string(datum["text"], target["text"])
+    diff_indices = diff_string(datum["text"], target["text"])
     for tag, ent in datum["entity"].items():
         start = diff_indices[ent["start"]]
         try:
