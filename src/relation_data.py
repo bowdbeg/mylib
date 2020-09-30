@@ -218,8 +218,8 @@ class RelationDatum:
         ann_txt = "\n".join(lines)
 
         if ofile:
-            ann_path = str(ofile) + ".ann"
-            txt_path = str(ofile) + ".txt"
+            ann_path = Path(str(ofile) + ".ann")
+            txt_path = Path(str(ofile) + ".txt")
             ann_path.write_text(ann_txt)
             txt_path.write_text(text)
         else:
