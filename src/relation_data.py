@@ -427,7 +427,7 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
             raise NotImplementedError
     precision = tp / (fp + tp + 1e-10)
     recall = tp / (fn + tp + 1e-10)
-    f_measure = 2 * precision * recall / (precision + recall)
+    f_measure = 2 * precision * recall / (precision + recall + 1e-10)
     return precision, recall, f_measure
 
 
