@@ -425,8 +425,8 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
                     fn += 1
         elif "relation":
             raise NotImplementedError
-    precision = tp / (fp + tp)
-    recall = tp / (fn + tp)
+    precision = tp / (fp + tp + 1e-10)
+    recall = tp / (fn + tp + 1e-10)
     f_measure = 2 * precision * recall / (precision + recall)
     return precision, recall, f_measure
 
