@@ -218,8 +218,8 @@ class RelationDatum:
         ann_txt = "\n".join(lines)
 
         if ofile:
-            ann_path = ofile.parent / (ofile.stem + ".ann")
-            txt_path = ofile.parent / (ofile.stem + ".txt")
+            ann_path = Path(str(ofile) + ".ann")
+            txt_path = Path(str(ofile) + ".txt")
             ann_path.write_text(ann_txt)
             txt_path.write_text(text)
         else:
@@ -466,9 +466,9 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
                     fn += 1
         elif "relation":
             raise NotImplementedError
-    precision = tp / (fp + tp)
-    recall = tp / (fn + tp)
-    f_measure = 2 * precision * recall / (precision + recall)
+    precision = tp / (fp + tp + 1e-10)
+    recall = tp / (fn + tp + 1e-10)
+    f_measure = 2 * precision * recall / (precision + recall + 1e-10)
     return precision, recall, f_measure
 
 
