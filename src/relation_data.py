@@ -227,12 +227,51 @@ class RelationDatum:
             print("ann:", ann_txt, sep="\n")
 
         return ann_txt, text
+    
+    def sentencize(self, spacy_model='en_core_sci_sm'):
+        doc = nlp(self.data["text"])
+        nlp = spacy.load(spacy_model)
+        ret = RelationData()
+        for snum, sent in enumerate(doc.sents):
+            start_sent = sent.start_char
+            end_sent = sent.end_char
+            entities = {}
+
+            for tag, ent in self.data["entity"].items():
+                start = ent["start"]
+                end = ent["end"]
+                if start_sent <= start < end_sent:
+                    ent["start"] = start - start_sent
+                    ent["end"] = end - end_sent if end - end_sent < end_sent else end_sent
+                    ent["entity"] = sent.text[ent["start"] : ent["end"]]
+                    entities[tag] = ent
+
+            relations = {}
+            for tag, rel in self.data["relation"].items():
+                if rel["arg1"] in entities.keys() and rel["arg2"] in entities.keys():
+                    relations[tag] = rel
+            name = "{}:{}".format(self.data['id'], snum)
+            ret = {"id": name, "text": sent.text, "entity": entities, "relation": relations}
+            # TODO event is not implemented
+        return ret
+
+
+# class RelationSentence(RelationDatum):
+#     def __init__(self, *args, **kwargs):
+#         super(self).__init__(*args, **kwargs)
+#         self._pairent = ""
+
+#     @property
+#     def pairent(self):
+#         return self._pairent
+
+#     @pairent.setter
+#     def pairent(self, x):
+#         self._pairent = x
 
 
 class RelationData:
-    def __init__(
-        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
-    ):
+    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
         self.data = OrderedDict()
         if dir_path:
             self.load(
@@ -242,9 +281,7 @@ class RelationData:
                 spacy_model=spacy_model,
             )
 
-    def load(
-        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"
-    ):
+    def load(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
         self.dir_path = Path(dir_path)
         self.pattern = pattern
         files = self.dir_path.glob(pattern)
@@ -254,8 +291,9 @@ class RelationData:
         for f in files:
             self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
 
-    def from_dict(dic):
+    def from_dict(self, dic):
         self.data = dic
+        return self
 
     def __getitem__(self, key):
         return self.data[key]
@@ -271,12 +309,12 @@ class RelationData:
 
     def values(self):
         return self.data.values()
+    
+    def update(self,dat):
+        self.data.update(dat)
 
     def export_docred(self, ofile=None, spacy_model="en_core_sci_sm"):
-        odata = [
-            v.export_docred_as_dict(spacy_model=spacy_model)
-            for v in tqdm(self.data.values())
-        ]
+        odata = [v.export_docred_as_dict(spacy_model=spacy_model) for v in tqdm(self.data.values())]
 
         otxt = json.dumps(odata)
         if ofile:
@@ -293,6 +331,13 @@ class RelationData:
             ann_txts.append(a)
             txt.append(t)
         return ann_txts, txt
+
+    def sentencize(self, spacy_model="en_core_sci_sm"):
+        ret = RelationData()
+        for key, dat in data.items():
+            d = dat.sentencize()
+            ret.update(d)
+        return ret
 
 
 # ann data loader
@@ -396,14 +441,10 @@ def calc_score(gold, pred, mode="entity", strict=True, label_pattern="*"):
     for key in and_keys:
         if "entity":
             gents = [
-                (e["start"], e["end"])
-                for e in gold[key]["entity"].values()
-                if re.search(label_pattern, e["label"])
+                (e["start"], e["end"]) for e in gold[key]["entity"].values() if re.search(label_pattern, e["label"])
             ]
             pents = [
-                (e["start"], e["end"])
-                for e in pred[key]["entity"].values()
-                if re.search(label_pattern, e["label"])
+                (e["start"], e["end"]) for e in pred[key]["entity"].values() if re.search(label_pattern, e["label"])
             ]
             for p in pents:
                 judges = (
