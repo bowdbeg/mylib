@@ -227,10 +227,9 @@ class RelationDatum:
             print("ann:", ann_txt, sep="\n")
 
         return ann_txt, text
-    
-    def sentencize(self, spacy_model='en_core_sci_sm'):
+
+    def sentencize(self, nlp=spacy.load("en_core_sci_sm")):
         doc = nlp(self.data["text"])
-        nlp = spacy.load(spacy_model)
         ret = RelationData()
         for snum, sent in enumerate(doc.sents):
             start_sent = sent.start_char
@@ -242,18 +241,34 @@ class RelationDatum:
                 end = ent["end"]
                 if start_sent <= start < end_sent:
                     ent["start"] = start - start_sent
-                    ent["end"] = end - end_sent if end - end_sent < end_sent else end_sent
+                    ent["end"] = end - start_sent if end - start_sent < end_sent else end_sent
                     ent["entity"] = sent.text[ent["start"] : ent["end"]]
+                    assert sent.text[ent['start']:ent['end']] in ent["entity"]
                     entities[tag] = ent
 
             relations = {}
             for tag, rel in self.data["relation"].items():
                 if rel["arg1"] in entities.keys() and rel["arg2"] in entities.keys():
                     relations[tag] = rel
-            name = "{}:{}".format(self.data['id'], snum)
-            ret = {"id": name, "text": sent.text, "entity": entities, "relation": relations}
+            name = "{}:{}".format(self.data["id"], snum)
+            ret[name] = {"id": name, "text": sent.text, "entity": entities, "relation": relations}
             # TODO event is not implemented
         return ret
+
+    # def export_bio(self, transformers_tokenizer=None,tokenizer=None,ofile=None):
+    #     def get_start(text, text_sp):
+    #         starts = [0 for _ in  range(len(text_sp))]
+    #         for i, w in enumerate(text_sp):
+    #             ln = len(transformers_tokenizer.convert_tokens_to_string(w))
+                
+    #     for key,val in self.data.items():
+    #         ents = val['entity']
+    #         text = val['text']
+    #         text_sp = tokenizer(text)
+
+    #         for key,ent in ents.items():
+
+
 
 
 # class RelationSentence(RelationDatum):
@@ -271,8 +286,9 @@ class RelationDatum:
 
 
 class RelationData:
-    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
+    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False):
         self.data = OrderedDict()
+        self.verbose = verbose
         if dir_path:
             self.load(
                 dir_path=dir_path,
@@ -288,8 +304,12 @@ class RelationData:
 
         self.data = OrderedDict()
 
-        for f in files:
-            self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
+        if self.verbose:
+            for f in tqdm(files, leave=False, desc="Load"):
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
+        else:
+            for f in files:
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
 
     def from_dict(self, dic):
         self.data = dic
@@ -309,8 +329,8 @@ class RelationData:
 
     def values(self):
         return self.data.values()
-    
-    def update(self,dat):
+
+    def update(self, dat):
         self.data.update(dat)
 
     def export_docred(self, ofile=None, spacy_model="en_core_sci_sm"):
@@ -334,9 +354,15 @@ class RelationData:
 
     def sentencize(self, spacy_model="en_core_sci_sm"):
         ret = RelationData()
-        for key, dat in data.items():
-            d = dat.sentencize()
-            ret.update(d)
+        nlp = spacy.load(spacy_model)
+        if self.verbose:
+            for key, dat in tqdm(self.data.items(), desc="Sentencize", leave=False):
+                d = dat.sentencize(nlp=nlp)
+                ret.update(d)
+        else:
+            for key, dat in self.data.items():
+                d = dat.sentencize(nlp=nlp)
+                ret.update(d)
         return ret
 
 
