@@ -24,6 +24,9 @@ def bio2ann(input, output, pattern="*.tsv"):
         buf_lbl = ""
         pre = "O"
         for line in lines:
+            if len(line) < 2:
+                otxt += "\n"
+                continue
             word = line[0]
             tag = line[1]
             bio = tag[0]
@@ -33,8 +36,9 @@ def bio2ann(input, output, pattern="*.tsv"):
             start = len(otxt)
             end = len(otxt) + len(bufw)
             if bio == "B" or (bio == "I" and (pre == "O" or label != buf_lbl)):
-                anns.append((buf_lbl, start, end, bufw))
-                otxt += bufw + " "
+                if buf:
+                    anns.append((buf_lbl, start, end, bufw))
+                    otxt += bufw + " "
                 buf = [word]
                 buf_lbl = label
             elif bio == "I":
@@ -43,13 +47,17 @@ def bio2ann(input, output, pattern="*.tsv"):
                 if buf:
                     anns.append((buf_lbl, start, end, bufw))
                     otxt += bufw + " "
-                otxt += bufw + " "
+                otxt += word + " "
+                buf = []
+                buf_lbl = ""
             else:
                 raise NotImplementedError
 
             pre = bio
-        otxt = otxt.stri()
-        oann = "\n".join(["T{i}\t{lbl} {st} {en}\t{w}" for i, (lbl, st, en, w) in enumerate(anns, start=1)])
+        otxt = otxt.strip()
+        oann = "\n".join(
+            ["T{}\t{} {} {}\t{}".format(i, lbl, st, en, w) for i, (lbl, st, en, w) in enumerate(anns, start=1)]
+        )
         (output / (ifile.stem + ".ann")).write_text(oann)
         (output / (ifile.stem + ".txt")).write_text(otxt)
 
