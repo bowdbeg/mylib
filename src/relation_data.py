@@ -6,6 +6,15 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 import re
 from difflib import Differ
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+import math
+
+try:
+    nlp_def = spacy.load("en_core_sci_sm")
+except:
+    nlp_def = spacy.load("en_core_web_sm")
 
 
 class RelationDatum:
@@ -22,7 +31,7 @@ class RelationDatum:
         else:
             self.data_type = data_type
 
-        self.data = self.parse(self.data_path, data_type=self.data_type)
+        self.data = self.parse(self.data_path, data_type=self.data_type, nlp=nlp_def)
         return self
 
     def from_dict(self, dic):
@@ -44,21 +53,35 @@ class RelationDatum:
     def values(self):
         return self.data.values()
 
-    def parse(self, data_path, data_type="auto"):
+    def parse(self, data_path, data_type="auto", nlp=nlp_def):
         data_path = Path(data_path)
         if data_type == "auto":
             data_type = data_path.suffix[1:]
 
         if data_type == "ann":
-            data = self.parse_ann(data_path)
+            data = self.parse_ann(data_path, nlp=nlp)
         else:
             raise NotImplementedError
 
         self.data = data
+        self.set_sentnum()
         return data
 
+    def set_sentnum(self, spacy_model="en_core_sci_sm"):
+        ents = self.data["entity"]
+        doc = self.data["doc"]
+        sent_starts = [s.start_char for s in doc.sents]
+        sent_ends = [s.end_char for s in doc.sents]
+        for key, ent in ents.items():
+            start = ent["start"]
+            for i, (st, en) in enumerate(zip(sent_starts, sent_ends)):
+                if st <= start < en:
+                    snum = i
+                    break
+            self.data["entity"][key]["sent"] = snum
+
     @staticmethod
-    def parse_ann(ann_path):
+    def parse_ann(ann_path, nlp=nlp_def):
         ann_path = Path(ann_path)
         txt_path = ann_path.parent / "{}.txt".format(ann_path.stem)
 
@@ -75,6 +98,7 @@ class RelationDatum:
         data["entity"] = ents
         data["relation"] = rels
         data["event"] = events
+        data["doc"] = nlp(text)
 
         return data
 
@@ -243,7 +267,7 @@ class RelationDatum:
                     ent["start"] = start - start_sent
                     ent["end"] = end - start_sent if end - start_sent < end_sent else end_sent
                     ent["entity"] = sent.text[ent["start"] : ent["end"]]
-                    assert sent.text[ent['start']:ent['end']] in ent["entity"]
+                    assert sent.text[ent["start"] : ent["end"]] in ent["entity"]
                     entities[tag] = ent
 
             relations = {}
@@ -255,20 +279,182 @@ class RelationDatum:
             # TODO event is not implemented
         return ret
 
+    def vis_graph(self, out=None, conf=None):
+        # if conf:
+        #     config = Path(conf).read_text()
+        #     for config.
+        #     colors = dict([(lbl, d["color"]) for lbl, d in config["drawing"].items() if "color" in d])
+        # else:
+        #     colors = {}
+        colors = {
+            "Amount-Misc": "#65a300",
+            "Amount-Unit": "lightblue",
+            "Apparatus-Descriptor": "#FE8536",
+            "Apparatus-Property-Type": "#01D8C4",
+            "Apparatus-Unit": "lightblue",
+            "Brand": "#f99b43",
+            "Characterization-Apparatus": "#a743f9",
+            "Condition-Misc": "#65a300",
+            "Condition-Type": "#01D8C4",
+            "Condition-Unit": "lightblue",
+            "Material": "red",
+            "Material-Descriptor": "#FE8536",
+            "Meta": "#abaf22",
+            "Nonrecipe-Material": "red",
+            "Number": "#4795FF",
+            "Operation": "lightgreen",
+            "Property-Misc": "#65a300",
+            "Property-Type": "#01D8C4",
+            "Property-Unit": "lightblue",
+            "Reference": "grey",
+            "Synthesis-Apparatus": "#a743f9",
+        }
+        ecolors = {
+            "Amount_Of": 0,
+            "Apparatus_Attr_Of": 0,
+            "Apparatus_Of": 0,
+            "Atmospheric_Material": 0,
+            "Brand_Of": 0,
+            "Condition_Of": 0,
+            "Coref_Of": 0,
+            "Descriptor_Of": 0,
+            "Next_Operation": 0,
+            "Number_Of": 0,
+            "Participant_Material": 0,
+            "Property_Of": 0,
+            "Recipe_Precursor": 0,
+            "Recipe_Target": 0,
+            "Solvent_Material": 0,
+            "Type_Of": 0,
+        }
+        cm = plt.get_cmap("jet", len(ecolors))
+        for i, k in enumerate(ecolors):
+            ecolors[k] = cm(i)
+
+        data = self.data
+        ents = OrderedDict([(t, e["entity"]) for t, e in self.data["entity"].items()])
+        while True:
+            flag = False
+            for e in ents:
+                if list(ents.values()).count(ents[e]) > 1:
+                    ents[e] = ents[e] + "_"
+                    flag = True
+            if not flag:
+                break
+        elabels = OrderedDict([(t, e["label"]) for t, e in self.data["entity"].items()])
+        nodes = []
+        col = []
+        for key in ents.keys():
+            e = ents[key]
+            lbl = elabels[key]
+            if lbl in colors:
+                nodes.append((e, {"color": colors[lbl]}))
+                col.append(colors[lbl])
+            else:
+                nodes.append((e, {"color": "green"}))
+                col.append("green")
+        edges = OrderedDict([((ents[r["arg1"]], ents[r["arg2"]]), r["label"]) for r in self.data["relation"].values()])
+
+        num_sent = len(list(self.data["doc"].sents))
+        order = [
+            list(
+                map(
+                    lambda x: x[0],
+                    sorted(
+                        [
+                            (nodes[j][0], e["start"])
+                            for j, e in enumerate(self.data["entity"].values())
+                            if e["sent"] == i
+                        ],
+                        key=lambda x: x[1],
+                    ),
+                )
+            )
+            for i in range(num_sent)
+        ]
+        position = []
+        for i, ent in enumerate(self.data["entity"].values()):
+            s = ent["sent"]
+            position.append([order[s].index(nodes[i][0]), s])
+            # tmp[s] += 1
+        position = np.array(position, dtype=np.float)
+        # func = lambda x: (1 - x ** 2) ** 0.5
+        # func = lambda x: -(x ** 2)
+        # func = lambda x: np.sin(x * np.pi)
+        func = lambda x: 0
+        # func = lambda x: 0.5 * (x%2)
+        for i, p in enumerate(position):
+            # position[i, 0] = ((p[0] - ps.min()) / (ps.max() - ps.min()) - 0.5) * 2 if ps.max() - ps.min() != 0 else 0.0
+            position[i, 0] = (p[0] / len(order[int(p[1])]) - 0.5) * 2
+            position[i, 1] = ((num_sent - p[1] - 1 + func(position[i, 0]) + 1.0 * (int(p[0]) % 2)) / num_sent - 0.5) * 2
+
+        G = nx.DiGraph()
+        G.add_nodes_from(nodes)
+        G.add_edges_from(list(edges.keys()))
+        # pos = nx.spring_layout(G, k=0.01)
+        # pos = nx.spectral_layout(G)
+        pos = nx.kamada_kawai_layout(G)
+        # pos = nx.rescale_layout(np.array(position))
+        # pos = OrderedDict([(n, p) for (n, _), p in zip(nodes, position)])
+        # print(pos)
+
+        margin = 0.03
+        for _ in range(20):
+            flag = False
+            for k1, p1 in pos.items():
+                for k2, p2 in pos.items():
+                    dist = np.linalg.norm(p1 - p2)
+                    # if np.abs(p1[1] - p2[1]) < hmargin:
+                    #     sign = np.sign(p1[1] - p2[1])
+                    #     sign = 1.0 if sign == 0 else sign
+                    #     pos[k1][1] = p1[1] + sign * abs(hmargin * 1.01 - abs(p1[1] - p2[1])) / 2
+                    #     pos[k2][1] = p2[1] - sign * abs(hmargin * 1.01 - abs(p1[1] - p2[1])) / 2
+                    #     flag = True
+                    if dist < margin:
+                        if dist != 0:
+                            pos[k1] = p1 + ((margin - dist) / 2) * (p1 - p2) / dist
+                            pos[k2] = p2 - ((margin - dist) / 2) * (p1 - p2) / dist
+                        else:
+                            pos[k1] = p1 + np.array([0, 1]) * margin / 2
+                            pos[k1] = p2 - np.array([0, 1]) * margin / 2
+                        flag = True
+
+            if not flag:
+                break
+
+        w = 30
+        h = int(30 * np.sqrt(2))
+        plt.figure(figsize=(w, h))
+        nx.draw(
+            G,
+            pos,
+            node_color=col,
+            node_shape="s",
+            arrowsize=30,
+            # connectionstyle="arc3,rad=0.1",
+            # edge_cmap=plt.get_cmap("jet"),
+            edge_color=[ecolors[v] for v in edges.values()],
+        )
+        # nx.draw_networkx_edge_labels(G, pos, edge_labels=edges, font_size=18)
+        nx.draw_networkx_labels(G, pos, font_size=18)
+        if out:
+            plt.savefig(out)
+        else:
+            plt.show()
+        plt.clf()
+
     # def export_bio(self, transformers_tokenizer=None,tokenizer=None,ofile=None):
     #     def get_start(text, text_sp):
     #         starts = [0 for _ in  range(len(text_sp))]
     #         for i, w in enumerate(text_sp):
     #             ln = len(transformers_tokenizer.convert_tokens_to_string(w))
-                
+
     #     for key,val in self.data.items():
     #         ents = val['entity']
     #         text = val['text']
     #         text_sp = tokenizer(text)
 
     #         for key,ent in ents.items():
-
-
 
 
 # class RelationSentence(RelationDatum):
@@ -364,6 +550,11 @@ class RelationData:
                 d = dat.sentencize(nlp=nlp)
                 ret.update(d)
         return ret
+
+    def vis_graph(self, out=None, conf=None):
+        for name, dat in self.data.items():
+            o = out if out is None else Path(out) / (str(name) + ".pdf")
+            dat.vis_graph(out=o, conf=conf)
 
 
 # ann data loader
@@ -532,28 +723,39 @@ def convert_to_target(data, target):
     return data
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser(description="calculate score between 2 dir")
+# if __name__ == "__main__":
+#     parser = ArgumentParser(description="calculate score between 2 dir")
 
-    parser.add_argument("gold", type=Path)
-    parser.add_argument("pred", type=Path)
-    parser.add_argument("--strict", action="store_true", default=False)
-    parser.add_argument("--label", type=str, default=".*")
-    # parser.add_argument('--data_type', type=str,default='auto')
+#     parser.add_argument("gold", type=Path)
+#     parser.add_argument("pred", type=Path)
+#     parser.add_argument("--strict", action="store_true", default=False)
+#     parser.add_argument("--label", type=str, default=".*")
+#     # parser.add_argument('--data_type', type=str,default='auto')
+
+#     args = parser.parse_args()
+
+#     gold_path = args.gold
+#     pred_path = args.pred
+#     strict = args.strict
+#     label = args.label
+
+#     gold_data = RelationData(gold_path, pattern="*.ann", data_type="ann")
+#     pred_data = RelationData(pred_path, pattern="*.ann", data_type="ann")
+
+#     pred_data = convert_to_target(pred_data, gold_data)
+
+#     p, r, f = calc_score(gold_data, pred_data, strict=strict, label_pattern=label)
+#     print("P: {:.5}".format(p))
+#     print("R: {:.5}".format(r))
+#     print("F: {:.5}".format(f))
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("input", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--config", type=Path)
 
     args = parser.parse_args()
 
-    gold_path = args.gold
-    pred_path = args.pred
-    strict = args.strict
-    label = args.label
-
-    gold_data = RelationData(gold_path, pattern="*.ann", data_type="ann")
-    pred_data = RelationData(pred_path, pattern="*.ann", data_type="ann")
-
-    pred_data = convert_to_target(pred_data, gold_data)
-
-    p, r, f = calc_score(gold_data, pred_data, strict=strict, label_pattern=label)
-    print("P: {:.5}".format(p))
-    print("R: {:.5}".format(r))
-    print("F: {:.5}".format(f))
+    data = RelationData(args.input, pattern="*.ann")
+    data.vis_graph(out=args.output, conf=args.config)
