@@ -43,6 +43,9 @@ class RelationDatum:
 
     def __setitem__(self, key, val):
         self.data[key] = val
+        
+    def __len__(self):
+        return len(self.data)
 
     def keys(self):
         return self.data.keys()
@@ -237,7 +240,7 @@ class RelationDatum:
             label = val["label"]
             arg1 = val["arg1"]
             arg2 = val["arg2"]
-            line = "{}\t{} Arg1:{} Arg2:{}"
+            line = "{}\t{} Arg1:{} Arg2:{}".format(tag,label,arg1,arg2)
             lines.append(line)
         ann_txt = "\n".join(lines)
 
@@ -482,6 +485,9 @@ class RelationData:
                 data_type=data_type,
                 spacy_model=spacy_model,
             )
+    
+    def __len__(self):
+        return len(self.data)
 
     def load(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
         self.dir_path = Path(dir_path)
