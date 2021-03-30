@@ -26,7 +26,11 @@ class AnnDataLoader():
         ents = OrderedDict()
         corefs = OrderedDict()
         for line in ann_raw.strip().split('\n'):
+            if not line:
+                continue
             sp = line.split('\t')
+            # if not line and len(sp) < 2:
+            # print(line)
             tag = sp[0]
             if 'T' in tag:
                 sp_s = sp[1].split(' ')
@@ -40,8 +44,8 @@ class AnnDataLoader():
                     'end': end,
                     'entity': entity
                 }
-                assert txt_raw[start:
-                               end] == entity, 'Not matched: span and word'
+                # assert txt_raw[start:
+                #               end] == entity, 'Not matched: span and word'
             elif 'R' in tag:
                 # relation
                 sp_s = sp[1].split(' ')

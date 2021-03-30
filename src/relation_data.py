@@ -240,7 +240,7 @@ class RelationDatum:
             label = val["label"]
             arg1 = val["arg1"]
             arg2 = val["arg2"]
-            line = "{}\t{} Arg1:{} Arg2:{}".format(tag,label,arg1,arg2)
+            line = "{}\t{} Arg1:{} Arg2:{}\t".format(tag,label,arg1,arg2)
             lines.append(line)
         ann_txt = "\n".join(lines)
 
@@ -492,7 +492,7 @@ class RelationData:
     def load(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
         self.dir_path = Path(dir_path)
         self.pattern = pattern
-        files = self.dir_path.glob(pattern)
+        files = list(self.dir_path.glob(pattern))
 
         self.data = OrderedDict()
 

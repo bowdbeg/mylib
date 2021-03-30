@@ -1,6 +1,6 @@
 from pathlib import Path
 from argparse import ArgumentParser
-
+from tqdm import tqdm
 
 def bio2ann(input, output, pattern="*.tsv"):
     input = Path(input)
@@ -14,7 +14,7 @@ def bio2ann(input, output, pattern="*.tsv"):
     else:
         inputs = [input]
 
-    for ifile in inputs:
+    for ifile in tqdm(inputs):
         text = ifile.read_text()
         lines = [line.split("\t") for line in text.split("\n")]
 
