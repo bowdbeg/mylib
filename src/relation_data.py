@@ -44,7 +44,7 @@ class RelationDatum:
 
     def __setitem__(self, key, val):
         self.data[key] = val
-        
+
     def __len__(self):
         return len(self.data)
 
@@ -84,8 +84,7 @@ class RelationDatum:
                     break
             self.data["entity"][key]["sent"] = snum
 
-    @staticmethod
-    def parse_ann(ann_path, nlp=nlp_def):
+    def parse_ann(self, ann_path, nlp=nlp_def):
         ann_path = Path(ann_path)
         txt_path = ann_path.parent / "{}.txt".format(ann_path.stem)
 
@@ -242,7 +241,7 @@ class RelationDatum:
             label = val["label"]
             arg1 = val["arg1"]
             arg2 = val["arg2"]
-            line = "{}\t{} Arg1:{} Arg2:{}\t".format(tag,label,arg1,arg2)
+            line = "{}\t{} Arg1:{} Arg2:{}\t".format(tag, label, arg1, arg2)
             lines.append(line)
         ann_txt = "\n".join(lines)
 
@@ -477,9 +476,11 @@ class RelationDatum:
 
 
 class RelationData:
-    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False, fast=False):
+    def __init__(
+        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False, fast=False
+    ):
         self.data = OrderedDict()
-        self.fast= fast
+        self.fast = fast
         self.verbose = verbose
         if dir_path:
             self.load(
@@ -488,7 +489,7 @@ class RelationData:
                 data_type=data_type,
                 spacy_model=spacy_model,
             )
-    
+
     def __len__(self):
         return len(self.data)
 
@@ -501,10 +502,10 @@ class RelationData:
 
         if self.verbose:
             for f in tqdm(files, leave=False, desc="Load"):
-                self.data[f.stem] = RelationDatum(path=f, data_type=data_type, fast= self.fast)
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type, fast=self.fast)
         else:
             for f in files:
-                self.data[f.stem] = RelationDatum(path=f, data_type=data_type,fast=self.fast)
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type, fast=self.fast)
 
     def from_dict(self, dic):
         self.data = dic
