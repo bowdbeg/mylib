@@ -18,8 +18,9 @@ except:
 
 
 class RelationDatum:
-    def __init__(self, path=None, data_type="auto"):
+    def __init__(self, path=None, data_type="auto", fast=False):
         self.data = OrderedDict()
+        self.fast = fast
         if path:
             self.load(path, data_type)
 
@@ -101,7 +102,8 @@ class RelationDatum:
         data["entity"] = ents
         data["relation"] = rels
         data["event"] = events
-        data["doc"] = nlp(text)
+        if not self.fast:
+            data["doc"] = nlp(text)
 
         return data
 
@@ -475,8 +477,9 @@ class RelationDatum:
 
 
 class RelationData:
-    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False):
+    def __init__(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False, fast=False):
         self.data = OrderedDict()
+        self.fast= fast
         self.verbose = verbose
         if dir_path:
             self.load(
@@ -498,10 +501,10 @@ class RelationData:
 
         if self.verbose:
             for f in tqdm(files, leave=False, desc="Load"):
-                self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type, fast= self.fast)
         else:
             for f in files:
-                self.data[f.stem] = RelationDatum(path=f, data_type=data_type)
+                self.data[f.stem] = RelationDatum(path=f, data_type=data_type,fast=self.fast)
 
     def from_dict(self, dic):
         self.data = dic
