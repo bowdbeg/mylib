@@ -68,10 +68,11 @@ class RelationDatum:
             raise NotImplementedError
 
         self.data = data
-        self.set_sentnum()
+        if not self.fast:
+            self.set_sentnum()
         return data
 
-    def set_sentnum(self, spacy_model="en_core_sci_sm"):
+    def set_sentnum(self):
         ents = self.data["entity"]
         doc = self.data["doc"]
         sent_starts = [s.start_char for s in doc.sents]
