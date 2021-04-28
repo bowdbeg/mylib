@@ -7,10 +7,11 @@ from statistics import mean
 parser = ArgumentParser()
 parser.add_argument("gold", type=Path)
 parser.add_argument("pred", type=Path)
+parser.add_argument("--tex",action='store_true')
 args = parser.parse_args()
 
-gold = RelationData(args.gold, pattern="*.ann")
-pred = RelationData(args.pred, pattern="*.ann")
+gold = RelationData(args.gold, pattern="*.ann", fast=True)
+pred = RelationData(args.pred, pattern="*.ann", fast=True)
 
 
 def get_relation_list(data):
@@ -87,10 +88,16 @@ def get_score(tp, fp, fn):
 
 
 fs = []
+if args.tex:
+    sep = ' & '
+    end = ' \\\\\n'
+else:
+    sep = '\t'
+    end = '\n'
 for c in each:
     p, r, f = get_score(each[c]["tp"], each[c]["fp"], each[c]["fn"])
-    print(c, '{:.04}'.format(p), '{:.04}'.format(r), '{:.04}'.format(f), sep="\t")
+    print(c, '{:.04}'.format(p), '{:.04}'.format(r), '{:.04}'.format(f), sep=sep,end=end)
     fs.append(f)
 p, r, f = get_score(tp, fp, fn)
-print("micro", '{:.04}'.format(p), '{:.04}'.format(r), '{:.04}'.format(f), sep="\t")
-print("macro", "", "", '{:.04}'.format(mean(fs)), sep="\t")
+print("micro", '{:.04}'.format(p), '{:.04}'.format(r), '{:.04}'.format(f), sep=sep,end=end)
+print("macro", "", "", '{:.04}'.format(mean(fs)), sep=sep,end=end)
