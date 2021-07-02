@@ -1,4 +1,5 @@
 from pathlib import Path
+from numpy.lib.function_base import iterable
 import spacy
 import json
 from collections import OrderedDict
@@ -10,6 +11,9 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from typing import Union, Any, Iterator, Dict
+
+DATA_TYPES = {"ann"}
 
 try:
     nlp_def = spacy.load("en_core_sci_sm")
@@ -17,60 +21,79 @@ except:
     nlp_def = spacy.load("en_core_web_sm")
 
 
+class Instance:
+    def __init__(self, **kwargs) -> None:
+        self.__dict__.update(**kwargs)
+
+    def __getitem__(self, key: Any) -> Any:
+        return self.__dict__[key]
+
+    def __setitem__(self, key: Any, val: Any) -> None:
+        self.__dict__[key] = val
+
+
 class RelationDatum:
-    def __init__(self, path=None, data_type="auto", fast=False):
+    def __init__(self, path: Union[str, Path] = None, data_type: str = "auto", fast: bool = False) -> None:
         self.data = OrderedDict()
         self.fast = fast
-        if path:
-            self.load(path, data_type)
 
-    def load(self, path, data_type="auto"):
-        self.data_path = Path(path)
+        if path:
+            self.path = Path(path)
+            if not self.path.exists():
+                raise FileNotFoundError("{} cannot find.".format(path))
+            self.load(self.path, data_type)
+
+    def load(self, path: Union[Path, str], data_type: str = "auto"):
+        self.path = Path(path)
 
         if data_type == "auto":
-            self.data_type = self.data_path.suffix[1:]
-        else:
-            self.data_type = data_type
+            data_type = self.path.suffix[1:]
+        if not data_type in DATA_TYPES:
+            raise NotImplementedError("Data loader for {} is not implemented.")
+        self.data_type = data_type
 
-        self.data = self.parse(self.data_path, data_type=self.data_type, nlp=nlp_def)
-        return self
+        self.data = self._parse(self.path, data_type=self.data_type, nlp=nlp_def)
 
-    def from_dict(self, dic):
-        self.data = dic
-        return self
+    @classmethod
+    def from_dict(cls, dic: Dict):
+        o = cls()
+        o.data = dic
+        return o
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         return self.data[key]
 
-    def __setitem__(self, key, val):
+    def __setitem__(self, key: Any, val: Any) -> None:
         self.data[key] = val
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def keys(self):
+    def keys(self) -> Iterator:
         return self.data.keys()
 
-    def items(self):
+    def items(self) -> Iterator:
         return self.data.items()
 
-    def values(self):
+    def values(self) -> Iterator:
         return self.data.values()
 
-    def parse(self, data_path, data_type="auto", nlp=nlp_def):
-        data_path = Path(data_path)
-        if data_type == "auto":
-            data_type = data_path.suffix[1:]
-
+    def _parse(
+        self, data_path: Union[str, Path], data_type: str = "auto", nlp: spacy.lang.en.English = nlp_def
+    ) -> Dict:
         if data_type == "ann":
             data = self.parse_ann(data_path, nlp=nlp)
         else:
             raise NotImplementedError
 
-        self.data = data
+        self.data.update(data)
         if not self.fast:
-            self.set_sentnum()
+            self._spacy_process(nlp=nlp)
         return data
+
+    def _spacy_process(self, nlp: spacy.lang.en.English = nlp_def):
+        self.doc = nlp(self.data["text"])
+        self.set_sentnum()
 
     def set_sentnum(self):
         ents = self.data["entity"]
@@ -116,10 +139,9 @@ class RelationDatum:
 
         return otxt
 
-    def export_docred_as_dict(self, spacy_model="en_core_sci_sm"):
+    def export_docred_as_dict(self, nlp=nlp_def):
         assert self.data
         data = self.data
-        nlp = spacy.load(spacy_model)
 
         dic = OrderedDict()
         dic["title"] = data["id"]
@@ -462,20 +484,6 @@ class RelationDatum:
     #         for key,ent in ents.items():
 
 
-# class RelationSentence(RelationDatum):
-#     def __init__(self, *args, **kwargs):
-#         super(self).__init__(*args, **kwargs)
-#         self._pairent = ""
-
-#     @property
-#     def pairent(self):
-#         return self._pairent
-
-#     @pairent.setter
-#     def pairent(self, x):
-#         self._pairent = x
-
-
 class RelationData:
     def __init__(
         self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False, fast=False
@@ -530,8 +538,8 @@ class RelationData:
     def update(self, dat):
         self.data.update(dat)
 
-    def export_docred(self, ofile=None, spacy_model="en_core_sci_sm"):
-        odata = [v.export_docred_as_dict(spacy_model=spacy_model) for v in tqdm(self.data.values())]
+    def export_docred(self, ofile=None, nlp=nlp_def):
+        odata = [v.export_docred_as_dict(nlp=nlp) for v in tqdm(self.data.values())]
 
         otxt = json.dumps(odata)
         if ofile:
@@ -598,12 +606,14 @@ class AnnDataLoader:
                 start = int(sp_s[1])
                 end = int(sp_s[2])
                 entity = sp[-1]
-                ents[tag] = {
-                    "label": label,
-                    "start": start,
-                    "end": end,
-                    "entity": entity,
-                }
+                ents[tag] = Instance(
+                    **{
+                        "label": label,
+                        "start": start,
+                        "end": end,
+                        "entity": entity,
+                    }
+                )
                 # assert txt_raw[start:end] == entity, "Not matched: span and word"
             elif "R" in tag:
                 # relation
@@ -619,11 +629,13 @@ class AnnDataLoader:
                 #         'arg2': arg2,
                 #     }
                 # else:
-                rels[tag] = {
-                    "label": label,
-                    "arg1": arg1,
-                    "arg2": arg2,
-                }
+                rels[tag] = Instance(
+                    **{
+                        "label": label,
+                        "arg1": arg1,
+                        "arg2": arg2,
+                    }
+                )
             elif "E" in tag:
                 if tag not in events.keys():
                     events[tag] = []
