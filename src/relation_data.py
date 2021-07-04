@@ -13,7 +13,7 @@ import numpy as np
 import math
 from typing import Union, Any, Iterator, Dict
 
-DATA_TYPES = {"ann"}
+DATA_TYPES = {"ann","timebank"}
 
 try:
     nlp_def = spacy.load("en_core_sci_sm")
