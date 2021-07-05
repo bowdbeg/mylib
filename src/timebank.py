@@ -94,7 +94,7 @@ class TimebankDatum:
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
             links[idx]["tail"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
 
-        return {"entity": entities, "relation": links, "eid2eiid": eid2eiid, "eiid2eid": eiid2eid}
+        return {"entity": entities, "relation": links, "eid2eiid": eid2eiid, "eiid2eid": eiid2eid, "text": text}
 
     def export(self, ofile=None):
         txt = self.raw
