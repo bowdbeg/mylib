@@ -22,9 +22,9 @@ class TimebankDatum:
                 idx = n.attrib["eid"]
                 events[idx]["class"] = n.attrib["class"]
                 events[idx]["text"] = n.text
-                events["start"] = len(text)
+                events[idx]["start"] = len(text)
                 text += n.text
-                events["end"] = len(text)
+                events[idx]["end"] = len(text)
                 text += n.tail
 
             elif "TIMEX" in n.tag:
@@ -33,9 +33,9 @@ class TimebankDatum:
                 timexs[idx]["class"] = n.attrib["type"]
                 timexs[idx]["value"] = n.attrib["value"]
                 timexs[idx]["text"] = n.text
-                timexs["start"] = len(text)
+                timexs[idx]["start"] = len(text)
                 text += n.text
-                timexs["end"] = len(text)
+                timexs[idx]["end"] = len(text)
                 text += n.tail
             else:
                 raise NotImplementedError
@@ -60,9 +60,6 @@ class TimebankDatum:
         # instances
         eid2eiid = dict()
         eiid2eid = dict()
-        instances = defaultdict(dict)
-        instances.update(timexs)
-        instances.update(events)
         for n in tree.findall(".//{}".format("MAKEINSTANCE")):
             eid = n.attrib["eventID"]
             eiid = n.attrib["eiid"]
@@ -103,8 +100,8 @@ class TimebankDatum:
         for lid, v in self.relation.items():
             hid = v["head"]
             tid = v["tail"]
-            hnm = "eventInstanceID" if hid == "e" else "timeID"
-            tnm = "relatedToEventInstance" if tid == "e" else "relatedToTime"
+            hnm = "eventInstanceID" if hid[0] == "e" else "timeID"
+            tnm = "relatedToEventInstance" if tid[0] == "e" else "relatedToTime"
             l = '<TLINK lid="{}" relType="{}" {}="{}" {}="{}" />'.format(lid, v["class"], hnm, hid, tnm, tid)
             lines.append(l)
         lines.append("</TimeML>")
