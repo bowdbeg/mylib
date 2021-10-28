@@ -83,13 +83,13 @@ class TimebankDatum:
             links[idx]["class"] = n.attrib["relType"]
             links[idx]["type"] = "TLINK"
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
-            links[idx]["tail"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
+            links[idx]["tail"] = n.attrib["relatedToTime"] if "relatedToTime" in n.attrib else n.attrib["relatedToEventInstance"]
         for n in tree.findall(".//{}".format("SLINK")):
             idx = n.attrib["lid"]
             links[idx]["class"] = n.attrib["relType"]
             links[idx]["type"] = "SLINK"
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
-            links[idx]["tail"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
+            links[idx]["tail"] = n.attrib["relatedToTime"] if "relatedToTime" in n.attrib else n.attrib["relatedToEventInstance"]
 
         return {"entity": entities, "relation": links, "eid2eiid": eid2eiid, "eiid2eid": eiid2eid, "text": text}
 
