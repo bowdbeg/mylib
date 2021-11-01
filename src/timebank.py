@@ -68,8 +68,10 @@ class TimebankDatum:
 
             events[eid]["eiid"] = eiid
             events[eid]["aspect"] = n.attrib["aspect"]
-            events[eid]["polarity"] = n.attrib["polarity"]
-            events[eid]["pos"] = n.attrib["pos"]
+            if "polarity" in n.attrib:
+                events[eid]["polarity"] = n.attrib["polarity"]
+            if 'pos' in n.attrib:
+                events[eid]["pos"] = n.attrib["pos"]
             if "modality" in n.attrib:
                 events[eid]["modality"] = n.attrib["modality"]
 
@@ -89,7 +91,14 @@ class TimebankDatum:
             links[idx]["class"] = n.attrib["relType"]
             links[idx]["type"] = "SLINK"
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
-            links[idx]["tail"] = n.attrib["relatedToTime"] if "relatedToTime" in n.attrib else n.attrib["relatedToEventInstance"]
+            if 'relatedToTime' in n.attrib:
+                links[idx]["tail"] = n.attrib["relatedToTime"]
+            elif 'relatedToEventInstance' in n.attrib:
+                links[idx]['tail']=n.attrib["relatedToEventInstance"]
+            elif 'subordinatedEventInstance' in n.attrib:
+                links[idx]['tail']=n.attrib['subordinatedEventInstance']
+            else:
+                raise NotImplementedError
 
         return {"entity": entities, "relation": links, "eid2eiid": eid2eiid, "eiid2eid": eiid2eid, "text": text}
 
