@@ -486,7 +486,7 @@ class RelationDatum:
 
 class RelationData:
     def __init__(
-        self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm", verbose=False, fast=False
+        self, dir_path=None, pattern="*", data_type="auto", nlp=nlp_def, verbose=False, fast=False
     ):
         self.data = OrderedDict()
         self.fast = fast
@@ -496,13 +496,13 @@ class RelationData:
                 dir_path=dir_path,
                 pattern=pattern,
                 data_type=data_type,
-                spacy_model=spacy_model,
+                nlp=nlp,
             )
 
     def __len__(self):
         return len(self.data)
 
-    def load(self, dir_path=None, pattern="*", data_type="auto", spacy_model="en_core_sci_sm"):
+    def load(self, dir_path=None, pattern="*", data_type="auto", nlp=nlp_def):
         self.dir_path = Path(dir_path)
         self.pattern = pattern
         files = list(self.dir_path.glob(pattern))
@@ -557,9 +557,8 @@ class RelationData:
             txt.append(t)
         return ann_txts, txt
 
-    def sentencize(self, spacy_model="en_core_sci_sm"):
+    def sentencize(self, nlp=nlp_def):
         ret = RelationData()
-        nlp = spacy.load(spacy_model)
         if self.verbose:
             for key, dat in tqdm(self.data.items(), desc="Sentencize", leave=False):
                 d = dat.sentencize(nlp=nlp)
