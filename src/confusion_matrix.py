@@ -107,7 +107,7 @@ def draw_confusion_matrix(conf, labels=None, figsize=(9.6, 7.2), label_fontsize=
     )
     ax.tick_params(axis="y", labelrotation=0, labelsize=tick_fontsize)
     ax.tick_params(axis="x", labelsize=tick_fontsize)
-    ax.set_xlabel("Pred", fontsize=label_fontsize)
+    ax.set_xlabel("Prediction", fontsize=label_fontsize)
     ax.set_ylabel("Gold", fontsize=label_fontsize)
     fig.tight_layout()
     return fig
@@ -318,7 +318,9 @@ if __name__ == "__main__":
 
         print(confusion_matrix2metrics(conf, negative_indices=[dic["None"]], return_count=True))
 
-        fig = draw_confusion_matrix(conf, labels=list(dic.keys()))
+        fig = draw_confusion_matrix(
+            conf, labels=list(dic.keys()), figsize=(18, 12), label_fontsize=16, tick_fontsize=13
+        )
         if args.output:
             fig.savefig(args.output)
         else:
