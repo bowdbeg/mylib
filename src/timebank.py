@@ -5,14 +5,14 @@ from pathlib import Path
 
 
 class TimebankDatum:
-    def __init__(self, file) -> None:
+    def __init__(self, file, matres=False) -> None:
         self.file = Path(file)
         self.raw = self.file.read_text()
         self.tree = ET.fromstring(self.raw)
 
-        self.__dict__.update(self.parse(self.tree))
+        self.__dict__.update(self.parse(self.tree,matres=False))
 
-    def parse(self, tree):
+    def parse(self, tree,matres=False):
         txtnode = tree.find("TEXT")
         events = defaultdict(dict)
         timexs = defaultdict(dict)
@@ -79,7 +79,8 @@ class TimebankDatum:
                 events[eid]["modality"] = n.attrib["modality"]
 
         entities = dict()
-        entities.update(timexs)
+        if not matres:
+            entities.update(timexs)
         entities.update(events)
 
         links = defaultdict(dict)
