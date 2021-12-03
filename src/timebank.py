@@ -17,6 +17,7 @@ class TimebankDatum:
         events = defaultdict(dict)
         timexs = defaultdict(dict)
         text = txtnode.text.replace("\n", "")
+        timetag=None
         for n in txtnode:
             if n.tag == "EVENT":
                 idx = n.attrib["eid"]
@@ -38,21 +39,23 @@ class TimebankDatum:
                 timexs[idx]["end"] = len(text)
                 text += n.tail
             else:
-                raise NotImplementedError
+                print(n.tag)
+                # raise NotImplementedError
 
         # entities outside of text
-        for n in tree.findall(".//DCT/{}".format(timetag)):
-            if not n.attrib["tid"] in timexs:
-                idx = n.attrib["tid"]
-                timexs[idx]["class"] = n.attrib["type"]
-                timexs[idx]["value"] = n.attrib["value"]
-                timexs[idx]["text"] = n.text
-                timexs[idx]["start"] = None
-                timexs[idx]["end"] = None
+        if timetag:
+            for n in tree.findall(".//DCT/{}".format(timetag)):
+                if not n.attrib["tid"] in timexs:
+                    idx = n.attrib["tid"]
+                    timexs[idx]["class"] = n.attrib["type"]
+                    timexs[idx]["value"] = n.attrib["value"]
+                    timexs[idx]["text"] = n.text
+                    timexs[idx]["start"] = None
+                    timexs[idx]["end"] = None
         # for n in tree.findall(".//{}".format("EVENT")):
         #     if not n.attrib["eid"] in events:
         #         idx = n.attrib["eid"]
-        #         events[idx]["class"] = n.attrib["class"]
+        #         events[idx]["class"] = n.4    ["class"]
         #         events[idx]["text"] = n.text
         #         events[idx]["start"] = None
         #         events[idx]["end"] = None
