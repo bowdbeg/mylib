@@ -10,14 +10,14 @@ class TimebankDatum:
         self.raw = self.file.read_text()
         self.tree = ET.fromstring(self.raw)
 
-        self.__dict__.update(self.parse(self.tree,matres=False))
+        self.__dict__.update(self.parse(self.tree, matres=False))
 
-    def parse(self, tree,matres=False):
+    def parse(self, tree, matres=False):
         txtnode = tree.find("TEXT")
         events = defaultdict(dict)
         timexs = defaultdict(dict)
         text = txtnode.text.replace("\n", "")
-        timetag=None
+        timetag = None
         for n in txtnode:
             if n.tag == "EVENT":
                 idx = n.attrib["eid"]
@@ -39,8 +39,8 @@ class TimebankDatum:
                 timexs[idx]["end"] = len(text)
                 text += n.tail
             else:
-                print(n.tag)
                 # raise NotImplementedError
+                pass
 
         # entities outside of text
         if timetag:
@@ -73,7 +73,7 @@ class TimebankDatum:
             events[eid]["aspect"] = n.attrib["aspect"]
             if "polarity" in n.attrib:
                 events[eid]["polarity"] = n.attrib["polarity"]
-            if 'pos' in n.attrib:
+            if "pos" in n.attrib:
                 events[eid]["pos"] = n.attrib["pos"]
             if "modality" in n.attrib:
                 events[eid]["modality"] = n.attrib["modality"]
@@ -89,18 +89,20 @@ class TimebankDatum:
             links[idx]["class"] = n.attrib["relType"]
             links[idx]["type"] = "TLINK"
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
-            links[idx]["tail"] = n.attrib["relatedToTime"] if "relatedToTime" in n.attrib else n.attrib["relatedToEventInstance"]
+            links[idx]["tail"] = (
+                n.attrib["relatedToTime"] if "relatedToTime" in n.attrib else n.attrib["relatedToEventInstance"]
+            )
         for n in tree.findall(".//{}".format("SLINK")):
             idx = n.attrib["lid"]
             links[idx]["class"] = n.attrib["relType"]
             links[idx]["type"] = "SLINK"
             links[idx]["head"] = n.attrib["timeID"] if "timeID" in n.attrib else n.attrib["eventInstanceID"]
-            if 'relatedToTime' in n.attrib:
+            if "relatedToTime" in n.attrib:
                 links[idx]["tail"] = n.attrib["relatedToTime"]
-            elif 'relatedToEventInstance' in n.attrib:
-                links[idx]['tail']=n.attrib["relatedToEventInstance"]
-            elif 'subordinatedEventInstance' in n.attrib:
-                links[idx]['tail']=n.attrib['subordinatedEventInstance']
+            elif "relatedToEventInstance" in n.attrib:
+                links[idx]["tail"] = n.attrib["relatedToEventInstance"]
+            elif "subordinatedEventInstance" in n.attrib:
+                links[idx]["tail"] = n.attrib["subordinatedEventInstance"]
             else:
                 raise NotImplementedError
 
