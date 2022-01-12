@@ -30,6 +30,8 @@ files = list(args.dataset_dir.glob("*"))
 refdata = defaultdict(list)
 for line in args.ref_file.read_text().strip().split("\n"):
     sp = line.split()
+    if not sp:
+        continue
     # assert len(sp) == 4
     if args.matres:
         d = ["ei{}".format(sp[3]), "ei{}".format(sp[4]), sp[5]]
