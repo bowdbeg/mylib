@@ -486,7 +486,7 @@ class RelationDatum:
 
 class RelationData:
     def __init__(
-        self, dir_path=None, pattern="*", data_type="auto", nlp=nlp_def, verbose=False, fast=False
+        self, dir_path=None, pattern="*.ann", data_type="auto", nlp=nlp_def, verbose=False, fast=False
     ):
         self.data = OrderedDict()
         self.fast = fast
@@ -600,6 +600,8 @@ class AnnDataLoader:
             sp = line.split("\t")
             tag = sp[0]
             if "T" in tag:
+                if ';' in sp[1]:
+                    continue
                 sp_s = sp[1].split(" ")
                 label = sp_s[0]
                 start = int(sp_s[1])
